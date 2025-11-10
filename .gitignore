@@ -1,0 +1,12 @@
+# Node modules
+node_modules/
+
+# Logs
+*.log
+
+# Environment variables
+.env
+
+# Security related config files
+config/allowedOrigins.js
+config/roles_list.js
