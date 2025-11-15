@@ -1,4 +1,4 @@
-const Article = require('../model/Article');
+const { Article } = require('../model/Article');
 const { format } = require('date-fns');
 
 const getAllArticles = async (req, res) => {
@@ -66,4 +66,74 @@ const getArticle = async (req, res) => {
     res.json(article);
 }
 
-module.exports = { getAllArticles, createNewArticle, updateArticle, deleteArticle, getArticle }
+const getAllComments = async (req, res) => {
+    if (!req?.params?.id) return res.status(400).json({ "message": "ID parameter required."})
+    
+    const article = await Article.findOne({ _id: req.params.id }).exec();
+
+    if (!article) return res.status(204).json({ "message": `Article ID ${req.params.id} not found.`})
+    
+    const comments = article.comments;
+    if (!comments.length) return res.status(204).json({ "message": "No comments yet"})
+    
+    res.json(comments);
+
+}
+
+const createNewComment = async (req, res) => {
+    if (!req?.params?.id) return res.status(400).json({ "message": "ID parameter required."})
+    if (!req?.body?.username || !req?.body?.content) return res.status(400).json({ "message": "username and content required."})
+    
+    const article = await Article.findOne({ _id: req.params.id }).exec();
+
+    if (!article) return res.status(204).json({ "message": `Article ID ${req.params.id} not found.`})
+    
+    newComment = {
+        username: req.body.username,
+        content: req.body.content
+    }
+    article.comments.push(newComment)
+    const result = article.save();
+
+    res.status(201).json(result)
+}
+
+const updateComment = async (req, res) => {
+    if (!req?.params?.id || !req?.params?.commentId) res.status(400).json({ "message": "article amd comment ID required."})
+    
+    const article = await Article.findOne({ _id: req.params.id }).exec();
+    const comment = article.comments.find(comment => comment._id === req.params.commentId );
+    
+    if (!article) return res.status(204).json({ "message": `No article matches ID ${req.params.id}`})
+    if (!comment) return res.status(204).json({ "message": `No comment matches ID ${req.params.commentId}`})
+    
+    if (req?.body?.username) comment.username = req.body.username;
+    if (req?.body?.content) comment.content = req.body.content;
+    
+    const result = comment.save();
+    res.json(result)
+}
+
+const deleteComment = async (req, res) => {
+    if (!req?.params?.id || !req?.params?.commentId) res.status(400).json({ "message": "article amd comment ID required."})
+    
+    const article = await Article.findOne({ _id: req.params.id }).exec();
+    const comment = article.comments.find(comment => comment._id === req.params.commentId);
+
+    if (!article) return res.status(204).json({ "message": `No article matches ID ${req.params.id}`})
+    if (!comment) return res.status(204).json({ "message": `No comment matches ID ${req.params.commentId}`})
+
+    const result = await comment.deleteOne({ _id: req.body.commentId })
+}
+
+module.exports = { 
+    getAllArticles, 
+    createNewArticle, 
+    updateArticle, 
+    deleteArticle, 
+    getArticle, 
+    getAllComments,
+    createNewComment,
+    updateComment,
+    deleteComment
+}

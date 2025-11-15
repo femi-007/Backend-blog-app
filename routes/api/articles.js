@@ -13,4 +13,12 @@ router.route('/:id')
     .delete(verifyRoles(ROLES_LIST.Author), articlesController.deleteArticle)
     .get(articlesController.getArticle)
 
+router.route('/:id/comments')
+    .get(articlesController.getAllComments)
+    .post(articlesController.createNewComment)
+
+router.route('/:id/comments/:commentId')
+    .put(articlesController.updateComment)
+    .delete(articlesController.deleteComment)
+    
 module.exports = router;
