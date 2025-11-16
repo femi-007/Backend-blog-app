@@ -101,29 +101,21 @@ const createNewComment = async (req, res) => {
 const updateComment = async (req, res) => {
     if (!req?.params?.id || !req?.params?.commentId) res.status(400).json({ "message": "article amd comment ID required."})
     
-    const article = await Article.findOne({ _id: req.params.id }).exec();
-    const comment = article.comments.find(comment => comment._id === req.params.commentId );
-    
-    if (!article) return res.status(204).json({ "message": `No article matches ID ${req.params.id}`})
-    if (!comment) return res.status(204).json({ "message": `No comment matches ID ${req.params.commentId}`})
-    
-    if (req?.body?.username) comment.username = req.body.username;
-    if (req?.body?.content) comment.content = req.body.content;
-    
-    const result = comment.save();
-    res.json(result)
+    const updated = await Article.findOneAndUpdate({ _id: req.params.id, 'comments._id': req.params.commentId }, { $set: { 'comments.$.content': req?.body?.content } }, { new: true }).exec();
+
+    if (!updated) return res.status(204).json({ "message": `No comment matches ID ${req.params.commentId}`})
+
+    res.json(updated)
 }
 
 const deleteComment = async (req, res) => {
     if (!req?.params?.id || !req?.params?.commentId) res.status(400).json({ "message": "article amd comment ID required."})
     
-    const article = await Article.findOne({ _id: req.params.id }).exec();
-    const comment = article.comments.find(comment => comment._id === req.params.commentId);
+    const updated = await Article.findOneAndUpdate({ _id: req.params.id }, { $pull: { comments: { _id: req.params.commentId } } }, { new: true }).exec();
 
-    if (!article) return res.status(204).json({ "message": `No article matches ID ${req.params.id}`})
-    if (!comment) return res.status(204).json({ "message": `No comment matches ID ${req.params.commentId}`})
+    if (!updated) return res.status(204).json({ "message": `No comment matches ID ${req.params.commentId}`})
 
-    const result = await comment.deleteOne({ _id: req.body.commentId })
+    res.json(updated)
 }
 
 module.exports = { 
