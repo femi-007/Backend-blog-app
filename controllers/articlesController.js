@@ -1,5 +1,7 @@
 const { Article } = require('../model/Article');
 const { format } = require('date-fns');
+const { articleSchema, commentSchema } = require('../utils/validations/resourceValidation');
+const { formatValidationError } = require('../utils/format');
 
 const getAllArticles = async (req, res) => {
     const articles = await Article.find();
@@ -10,17 +12,26 @@ const getAllArticles = async (req, res) => {
 }
 
 const createNewArticle = async (req, res) => {
-    const { title, content, tags, authorId, author } = req.body;
-    
-    if (!title || !content || !tags || !Array.isArray(tags) || !authorId || !author) return res.status(400).json({ "message": "The following fields are required: title, content, tags(an array), authorId, author"});
+    // validate input
+    const validationResult = articleSchema.safeParse(req.body);
 
+    if (!validationResult.success) {
+        return res.status(400).json({
+            error: 'validation error',
+            details: formatValidationError(validationResult.error)
+        })
+    }
+
+    const { title, content, tags, authorId, author } = validationResult.data;
+
+    // create article
     try {
         const result = await Article.create({
-            title: title,
-            content: content,
-            tags: tags,
-            authorId: authorId,
-            author: author
+            title,
+            content,
+            tags,
+            authorId,
+            author
         })
 
         res.status(201).json(result)
@@ -30,15 +41,30 @@ const createNewArticle = async (req, res) => {
 }
 
 const updateArticle = async (req, res) => {
+    // validate input
     if (!req?.params?.id) return res.status(400).json({ "message": "Article ID required."})
-    
+
+    const updateArticleSchema = articleSchema.partial();
+    const validationResult = updateArticleSchema.safeParse(req.body);
+
+    if (!validationResult.success) {
+        return res.status(400).json({
+            error: 'validation error',
+            details: formatValidationError(validationResult.error)
+        })
+    }
+
+    const { title, content, tags } = validationResult.data
+
+    // check if article exists
     const article = await Article.findOne({ _id: req.params.id }).exec();
 
-    if (!article) return res.status(204).json({ "message": `No article matches ID ${req.params.id}`})
+    if (!article) return res.status(204).json({ "message": `No article matches ID ${req.params.id}`});
 
-    if (req.body?.title) article.title = req.body.title
-    if (req.body?.content) article.content = req.body.content
-    if (req.body?.title) article.tags.push(req.body.tags)
+    // update article
+    if (title) article.title = title
+    if (content) article.content = content
+    if (tags) article.tags.push(tags)
     article.updatedAt = format(new Date(), 'EEEE, MMMM do, yyyy h:mm a')
 
     const result = article.save();
@@ -81,16 +107,29 @@ const getAllComments = async (req, res) => {
 }
 
 const createNewComment = async (req, res) => {
+    // validate input
     if (!req?.params?.id) return res.status(400).json({ "message": "ID parameter required."})
-    if (!req?.body?.username || !req?.body?.content) return res.status(400).json({ "message": "username and content required."})
-    
+
+    const validationResult = commentSchema.safeParse(req.body);
+
+    if (!validationResult.success) {
+        return res.status(400).json({
+            error: 'validation error',
+            details: formatValidationError(validationResult.error)
+        })
+    }
+
+    const { username, content } = validationResult.data;
+
+    // check if comment exists
     const article = await Article.findOne({ _id: req.params.id }).exec();
 
     if (!article) return res.status(204).json({ "message": `Article ID ${req.params.id} not found.`})
     
-    newComment = {
-        username: req.body.username,
-        content: req.body.content
+    // create comment
+    const newComment = {
+        username,
+        content
     }
     article.comments.push(newComment)
     const result = article.save();
@@ -99,9 +138,23 @@ const createNewComment = async (req, res) => {
 }
 
 const updateComment = async (req, res) => {
+    // validate input
     if (!req?.params?.id || !req?.params?.commentId) res.status(400).json({ "message": "article amd comment ID required."})
     
-    const updated = await Article.findOneAndUpdate({ _id: req.params.id, 'comments._id': req.params.commentId }, { $set: { 'comments.$.content': req?.body?.content } }, { new: true }).exec();
+    const updateCommentSchema = commentSchema.partial();
+    const validationResult = updateCommentSchema.safeParse(req.body);
+
+    if (!validationResult.success) {
+        return res.status(400).json({
+            error: 'validation error',
+            details: formatValidationError(validationResult.error)
+        })
+    }
+
+    const { content } = validationResult.data
+
+    // find and update comment
+    const updated = await Article.findOneAndUpdate({ _id: req.params.id, 'comments._id': req.params.commentId }, { $set: { 'comments.$.content': content } }, { new: true }).exec();
 
     if (!updated) return res.status(204).json({ "message": `No comment matches ID ${req.params.commentId}`})
 

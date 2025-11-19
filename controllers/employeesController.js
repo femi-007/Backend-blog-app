@@ -1,6 +1,8 @@
 const Employee = require('../model/Employee');
 const User = require('../model/User');
 const ROLES_LIST = require('../config/roles_list');
+const { employeeSchema } = require('../utils/validations/resourceValidation');
+const { formatValidationError } = require('../utils/format');
 
 async function grantUserRole(res, role, email) {
     const foundUser = await User.findOne({ email }).exec();
@@ -22,22 +24,31 @@ const getAllEmployees = async (req, res) => {
 }
 
 const createNewEmployees = async (req, res) => {
-    if (!req?.body?.firstname || !req?.body?.lastname || !req?.body?.email || !req?.body?.position) {
-        return res.status(400).json({ 'message': 'The followiing fiellds are required: firstname, lastname, email, position' })
+    // validate input
+    const validationResult = employeeSchema.safeParse(req.body);
+
+    if (!validationResult.success) {
+        return res.status(400).json({
+            error: 'validation error',
+            details: formatValidationError(validationResult.error)
+        })
     }
+
+    const { firstname, lastname, email, position } = validationResult.data;
     
     // Grant some users who are employees premission based on position
-    if (req.body.position) {
-        const statusMessage = await grantUserRole(res, req.body.position, req.body.email)
+    if (position) {
+        const statusMessage = await grantUserRole(res, position, email)
         if (statusMessage) return statusMessage;
     }
 
+    // create employee
     try {
         const result = await Employee.create({
-            firstname: req.body.firstname,
-            lastname: req.body.lastname,
-            email: req.body.email,
-            position: req.body.position
+            firstname,
+            lastname,
+            email,
+            position
         });
 
         res.status(201).json(result);
@@ -48,23 +59,38 @@ const createNewEmployees = async (req, res) => {
 }
 
 const updateEmployees = async (req, res) => {
+    // validate input
     if (!req?.params?.id) {
         return res.status(400).json({ 'message': 'Employee ID required.' })
     }
 
+    const updateEmployeeSchema = employeeSchema.partial();
+    const validationResult = updateEmployeeSchema.safeParse(req.body);
+
+    if (!validationResult.success) {
+        return res.status(400).json({
+            error: 'validation error',
+            details: formatValidationError(validationResult.error)
+        })
+    }
+
+    const { firstname, lastname, email, position } = validationResult.data;
+
+    // check if employee exists
     const employee = await Employee.findOne({ _id: req.params.id }).exec();
     if(!employee) {
         return res.status(204).json({ "message": `No employee matches ID ${req.params.id}` }); 
     }
 
-    if (req.body?.position) {
-        const statusMessage = await grantUserRole(res, req.body.position, employee.email)
+    // update employee field(s)
+    if (position) {
+        const statusMessage = await grantUserRole(res, position, employee.email)
         if (statusMessage) return statusMessage;
     }
 
-    if (req.body?.firstname) employee.firstname = req.body.firstname;
-    if (req.body?.lastname) employee.lastname = req.body.lastname;
-    if (req.body?.email) employee.email = req.body.email;
+    if (firstname) employee.firstname = firstname;
+    if (lastname) employee.lastname = lastname;
+    if (email) employee.email = email;
 
     const result = await employee.save();
     res.json(result);

@@ -1,9 +1,20 @@
 const User = require('../model/User');
 const bcrypt = require('bcrypt');
+const { registerSchema } = require('../utils/validations/authValidation');
+const { formatValidationError } = require('../utils/format');
 
 const handleNewUser = async (req, res) => {
-    const { username, email, password } = req.body;
-    if(!username || !email || !password) return res.status(400).json({ "message": "email, username and password are required."});
+    // validate input
+    const validationResult = registerSchema.safeParse(req.body)
+
+    if (!validationResult.success) {
+        return res.status.json({
+            error: 'validation failed',
+            detailts: formatValidationError(validationResult.error)
+        });
+    }
+
+    const { username, email, password } = validationResult.data;
 
     // check for dupliicate username in db
     const duplicate = await User.findOne({ username }).exec();

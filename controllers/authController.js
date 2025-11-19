@@ -1,10 +1,21 @@
 const User = require('../model/User');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const { loginSchema } = require('../utils/validations/authValidation');
+const { formatValidationError } = require('../utils/format');
 
 const handleLogin = async (req, res) => {
-    const { username, password } = req.body;
-    if(!username || !password) return res.status(400).json({ "message": "username and password are required."});
+    // validate input
+    const validationResult = loginSchema.safeParse(req.body);
+
+    if(!validationResult.success) {
+        return res.status(400).json({
+            error: 'validation error',
+            details: formatValidationError(validationResult.error)
+        })
+    }
+
+    const { username, password } = validationResult.data;
 
     const foundUser = await User.findOne({ username }).exec();
     if (!foundUser) return res.sendStatus(401); //Unauthorized
