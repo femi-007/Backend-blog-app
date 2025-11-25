@@ -1,4 +1,3 @@
-const { format } = require('date-fns');
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema
 
@@ -12,8 +11,8 @@ const commentSchema = new Schema({
         required: true
     },
     createdAt: {
-        type: String,
-        default: format(new Date(), 'EEEE, MMMM do, yyyy h:mm a'),
+        type: Date,
+        default: Date.now(),
         required: true
     }
 })
@@ -41,11 +40,11 @@ const articleSchema = new Schema({
     },
     comments: [commentSchema],
     createdAt: {
-        type: String,
-        default: format(new Date(), 'EEEE, MMMM do, yyyy h:mm a'),
+        type: Date,
+        default: Date.now(),
         required: true
     },
-    updatedAt: String
+    updatedAt: Date
 })
 
 const Comment = mongoose.model('Comment', commentSchema)
