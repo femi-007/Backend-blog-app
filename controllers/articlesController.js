@@ -1,14 +1,41 @@
 const { Article } = require('../model/Article');
-const { format } = require('date-fns');
 const { articleSchema, commentSchema } = require('../utils/validations/resourceValidation');
 const { formatValidationError } = require('../utils/format');
 
 const getAllArticles = async (req, res) => {
-    const articles = await Article.find();
+    // pagination (page based)
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 5;
+
+    const startIndex = (page - 1) * limit;
+    const endIndex = page * limit;
+
+    const result = {}
+    if (startIndex > 0) {
+        result.prev = {
+            page: page - 1,
+            limit: limit
+        }
+    }
+    if (endIndex < await Article.countDocuments().exec()) {
+        result.next = {
+            page: page + 1,
+            limit: limit
+        }
+    }
+
+    // sorting
+    const sortBy = req.query.sortBy || "createdAt";
+    const sortOrder = req.query.sortOrder || "desc";
+    const sortInt = sortOrder === "asc" ? 1 : sortOrder === "desc" ? -1 : -1;
+
+    const articles = await Article.find().sort({ [sortBy]: sortInt }).skip(startIndex).limit(limit);
 
     if (!articles) return res.status(204).json({ "message": "No articles available"})
+
+    result.data = articles
     
-    res.json(articles);
+    res.json(result);
 }
 
 const createNewArticle = async (req, res) => {
@@ -65,7 +92,7 @@ const updateArticle = async (req, res) => {
     if (title) article.title = title
     if (content) article.content = content
     if (tags) article.tags.push(tags)
-    article.updatedAt = format(new Date(), 'EEEE, MMMM do, yyyy h:mm a')
+    article.updatedAt = new Date()
 
     const result = article.save();
     res.json(result);
