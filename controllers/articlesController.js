@@ -29,7 +29,19 @@ const getAllArticles = async (req, res) => {
     const sortOrder = req.query.sortOrder || "desc";
     const sortInt = sortOrder === "asc" ? 1 : sortOrder === "desc" ? -1 : -1;
 
-    const articles = await Article.find().sort({ [sortBy]: sortInt }).skip(startIndex).limit(limit);
+    // filter articles
+    const filter = {};
+
+    if (req.query.tags) {
+        const stringTags = req.query.tags;
+        const arrayTags = stringTags.split(',');
+
+        let tags = {};
+        tags.$in = arrayTags;
+        filter.tags = tags;
+    }
+
+    const articles = await Article.find(filter).sort({ [sortBy]: sortInt }).skip(startIndex).limit(limit);
 
     if (!articles) return res.status(204).json({ "message": "No articles available"})
 

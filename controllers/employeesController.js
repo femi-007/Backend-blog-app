@@ -18,7 +18,14 @@ async function grantUserRole(res, role, email) {
 }
 
 const getAllEmployees = async (req, res) => {
-    const employees = await Employee.find();
+    // filter employees
+    const filter = {};
+
+    if (req.query.firstname) filter.firstname = req.query.firstname;
+    if (req.query.lastname) filter.lastname = req.query.lastname;
+    if (req.query.position) filter.position = req.query.position;
+
+    const employees = await Employee.find(filter);
     if (!employees) return res.status(204).json({ 'message': 'No employees found.'})
     res.json(employees);
 }
